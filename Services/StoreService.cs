@@ -10,6 +10,10 @@ public class StoreService
     private AppData? Load() { try { var normalized=_db.ReadNormalized(); if(normalized!=null) return normalized; var json=_db.Read(); if(json!=null) return JsonSerializer.Deserialize<AppData>(json) ?? throw new InvalidDataException("SQLite contains invalid data"); if (!File.Exists(_file)) return null; return JsonSerializer.Deserialize<AppData>(File.ReadAllText(_file)); } catch (Exception ex) { throw new InvalidDataException("Не удалось прочитать данные. Исходный файл сохранён.", ex); } }
     private void Save() { lock (_lock) _db.WriteNormalized(_data); }
     public void Persist() => Save();
+    public List<string?[]> AvailableUnits(int id) => _db.AvailableUnits(id);
+    public string? UnitNumber(int id) => _db.UnitNumber(id);
+    public bool AssignUnit(int bookingId,int equipmentId,int unitId) => _db.AssignUnit(bookingId,equipmentId,unitId);
+    public bool HasIssuedUnits(int id) => _db.HasIssuedUnits(id);
     public List<string?[]> InventoryRows() => _db.InventoryRows();
     public List<string?[]> InventoryHistory() => _db.InventoryHistory();
     public bool IsAvailable(int equipmentId, DateTime start, DateTime end, int? ignoreBooking = null) {
@@ -41,6 +45,7 @@ public class StoreService
       Bookings = [new Booking { Id=1, EquipmentId=1, UserId=1, StartDate=DateTime.Today.AddDays(-2), EndDate=DateTime.Today.AddDays(2), TotalPrice=7500, Status=BookingStatus.Issued }, new Booking { Id=2, EquipmentId=2, UserId=1, StartDate=DateTime.Today.AddDays(12), EndDate=DateTime.Today.AddDays(14), TotalPrice=3600, Status=BookingStatus.Booked }]
     };
 }
+
 
 
 

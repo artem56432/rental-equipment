@@ -27,6 +27,7 @@ public sealed class SqliteStore : IDisposable {
    "CREATE TABLE IF NOT EXISTS equipment(id INTEGER PRIMARY KEY,name TEXT NOT NULL,description TEXT NOT NULL,category_id INTEGER NOT NULL REFERENCES categories(id),price_per_day TEXT NOT NULL,total_units INTEGER NOT NULL CHECK(total_units>=0),available_units INTEGER NOT NULL,repair_units INTEGER NOT NULL CHECK(repair_units>=0),written_off_units INTEGER NOT NULL CHECK(written_off_units>=0),state INTEGER NOT NULL,image_url TEXT NOT NULL,tags TEXT NOT NULL,CHECK(repair_units+written_off_units<=total_units))",
    "CREATE TABLE IF NOT EXISTS bookings(id INTEGER PRIMARY KEY,equipment_id INTEGER NOT NULL REFERENCES equipment(id),user_id INTEGER NOT NULL REFERENCES users(id),start_date TEXT NOT NULL,end_date TEXT NOT NULL,total_price TEXT NOT NULL,daily_rate TEXT NOT NULL,status INTEGER NOT NULL,return_condition TEXT,fine TEXT NOT NULL,created_at TEXT NOT NULL,CHECK(end_date>=start_date))",
    "CREATE TABLE IF NOT EXISTS inventory_units(id INTEGER PRIMARY KEY,equipment_id INTEGER NOT NULL REFERENCES equipment(id),inventory_number TEXT NOT NULL UNIQUE,state TEXT NOT NULL CHECK(state IN ('available','repair','written_off')))",
+   "CREATE TABLE IF NOT EXISTS booking_units(booking_id INTEGER PRIMARY KEY REFERENCES bookings(id),unit_id INTEGER NOT NULL REFERENCES inventory_units(id),assigned_at TEXT NOT NULL)",
    "CREATE TABLE IF NOT EXISTS inventory_history(id INTEGER PRIMARY KEY,unit_id INTEGER NOT NULL REFERENCES inventory_units(id),old_state TEXT,new_state TEXT NOT NULL,changed_at TEXT NOT NULL)",
    "CREATE INDEX IF NOT EXISTS idx_bookings_period ON bookings(equipment_id,start_date,end_date)",
    "CREATE TABLE IF NOT EXISTS schema_version(id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL)"}) Exec(sql);
@@ -42,6 +43,13 @@ public sealed class SqliteStore : IDisposable {
  }
  public List<string?[]> InventoryRows() => Rows("SELECT u.inventory_number,e.name,u.state FROM inventory_units u JOIN equipment e ON e.id=u.equipment_id ORDER BY e.id,u.id");
  public List<string?[]> InventoryHistory() => Rows("SELECT u.inventory_number,h.old_state,h.new_state,h.changed_at FROM inventory_history h JOIN inventory_units u ON u.id=h.unit_id ORDER BY h.id DESC LIMIT 100");
+ public List<string?[]> AvailableUnits(int equipmentId) => Rows($"SELECT id,inventory_number FROM inventory_units WHERE equipment_id={equipmentId} AND state='available' AND id NOT IN (SELECT bu.unit_id FROM booking_units bu JOIN bookings b ON b.id=bu.booking_id WHERE b.status IN (1,3)) ORDER BY inventory_number");
+ public string? UnitNumber(int bookingId) => Scalar($"SELECT u.inventory_number FROM booking_units bu JOIN inventory_units u ON u.id=bu.unit_id WHERE bu.booking_id={bookingId}");
+ public bool AssignUnit(int bookingId,int equipmentId,int unitId) {
+   if(Scalar($"SELECT id FROM inventory_units WHERE id={unitId} AND equipment_id={equipmentId} AND state='available' AND id NOT IN (SELECT bu.unit_id FROM booking_units bu JOIN bookings b ON b.id=bu.booking_id WHERE b.status IN (1,3))")==null) return false;
+   Exec($"INSERT INTO booking_units(booking_id,unit_id,assigned_at) VALUES({bookingId},{unitId},{Q(DateTime.UtcNow.ToString("O"))}) ON CONFLICT(booking_id) DO UPDATE SET unit_id=excluded.unit_id,assigned_at=excluded.assigned_at"); return true;
+ }
+ public bool HasIssuedUnits(int equipmentId) => Scalar($"SELECT 1 FROM booking_units bu JOIN bookings b ON b.id=bu.booking_id WHERE b.equipment_id={equipmentId} AND b.status IN (1,3) LIMIT 1")!=null;
  public void WriteNormalized(AppData d){Exec("BEGIN IMMEDIATE");try{
   foreach(var u in d.Users) Exec($"INSERT INTO users VALUES({u.Id},{Q(u.Name)},{Q(u.Email)},{Q(u.Password)},{(int)u.Role},{Q(u.CreatedAt.ToString("O"))}) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,password=excluded.password,role=excluded.role,created_at=excluded.created_at");
   foreach(var c in d.Categories) Exec($"INSERT INTO categories VALUES({c.Id},{Q(c.Name)},{Q(c.Icon)}) ON CONFLICT(id) DO UPDATE SET name=excluded.name,icon=excluded.icon");
@@ -62,5 +70,6 @@ public sealed class SqliteStore : IDisposable {
  Exception Error()=>new InvalidOperationException(Marshal.PtrToStringUTF8(sqlite3_errmsg(db))??"SQLite error");
  public void Dispose()=>sqlite3_close(db);
 }
+
 
 
