@@ -1,1 +1,18 @@
-document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('input[type=date]').forEach(i=>i.addEventListener('change',()=>{const s=document.querySelector('input[name=startDate]'),e=document.querySelector('input[name=endDate]');if(s&&e&&s.value)e.min=s.value;}));});
+document.addEventListener('DOMContentLoaded', () => {
+    const startDateInput = document.querySelector('input[name="startDate"]');
+    const endDateInput = document.querySelector('input[name="endDate"]');
+
+    if (!startDateInput || !endDateInput) {
+        return;
+    }
+
+    function updateMinimumReturnDate() {
+        if (startDateInput.value) {
+            endDateInput.min = startDateInput.value;
+        }
+    }
+
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        input.addEventListener('change', updateMinimumReturnDate);
+    });
+});

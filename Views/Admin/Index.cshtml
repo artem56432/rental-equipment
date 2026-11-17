@@ -1,7 +1,305 @@
 @model List<Equipment>
-@{ ViewData["Title"]="Администрирование"; var cats=(List<Category>)ViewBag.Categories; var users=(List<User>)ViewBag.Users; }
-<section class="wrap page"><div class="page-title"><div><div class="eyebrow muted">АДМИНИСТРИРОВАНИЕ</div><h1>Каталог и склад<span>.</span></h1><p>Тарифы, доступность, категории и роли.</p></div><a class="btn dark" href="/Stats">Статистика ↗</a></div>
-<div class="panel"><h2>Добавить оборудование</h2><form method="post" action="/Admin/Save">@Html.AntiForgeryToken()<input type="hidden" name="id" value="0"/><div class="two"><label>Название<input name="name" required/></label><label>Описание<input name="description"/></label><label>Категория<select name="categoryId">@foreach(var c in cats){<option value="@c.Id">@c.Name</option>}</select></label><label>Цена за сутки<input type="number" name="pricePerDay" min="1" required/></label><label>Количество<input type="number" name="totalUnits" min="1" value="1"/></label><label>Адрес изображения<input name="imageUrl"/></label></div><button class="small-btn">Добавить</button></form></div>
-<h2>Оборудование и склад</h2><div class="admin-grid">@foreach(var i in Model){<div class="panel"><div class="table-item"><img src="@i.ImageUrl" alt=""/><h2>@i.Name</h2></div><p>Всего: @i.TotalUnits · В ремонте: @i.RepairUnits · Списано: @i.WrittenOffUnits · Исправно: @(i.TotalUnits-i.RepairUnits-i.WrittenOffUnits)</p><details><summary>Изменить товар и тариф</summary><form method="post" action="/Admin/Save">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@i.Id"/><input type="hidden" name="totalUnits" value="@i.TotalUnits"/><input type="hidden" name="state" value="@i.State"/><label>Название<input name="name" value="@i.Name" required/></label><label>Описание<input name="description" value="@i.Description"/></label><label>Категория<select name="categoryId">@foreach(var c in cats){<option value="@c.Id" selected="@(c.Id==i.CategoryId)">@c.Name</option>}</select></label><label>Цена за сутки<input type="number" min="1" name="pricePerDay" value="@i.PricePerDay.ToString("0")" required/></label><label>Фото<input name="imageUrl" value="@i.ImageUrl"/></label><button class="small-btn">Сохранить</button></form></details><details><summary>Изменить склад</summary><form method="post" action="/Admin/Inventory">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@i.Id"/><label>Всего единиц<input type="number" min="0" name="totalUnits" value="@i.TotalUnits" required/></label><label>В ремонте<input type="number" min="0" name="repairUnits" value="@i.RepairUnits" required/></label><label>Списано<input type="number" min="0" name="writtenOffUnits" value="@i.WrittenOffUnits" required/></label><button class="small-btn">Сохранить склад</button></form></details></div>}</div>
-<div class="admin-grid" style="margin-top:24px"><div class="panel"><h2>Категории</h2>@foreach(var c in cats){<form method="post" action="/Admin/Category">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@c.Id"/><input name="name" value="@c.Name" required/><button class="small-btn">Сохранить</button></form>}<form method="post" action="/Admin/Category">@Html.AntiForgeryToken()<input type="hidden" name="id" value="0"/><input name="name" placeholder="Новая категория" required/><button class="small-btn">Добавить</button></form></div><div class="panel"><h2>Пользователи и сотрудники</h2>@foreach(var u in users){<div class="admin-list users"><div><span class="user-avatar">@u.Name.Substring(0,1)</span><span><b>@u.Name</b><small>@u.Email</small></span><form method="post" action="/Admin/Role">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@u.Id"/><select name="role" onchange="this.form.submit()"><option selected="@(u.Role==UserRole.Client)" value="Client">Клиент</option><option selected="@(u.Role==UserRole.Manager)" value="Manager">Менеджер</option><option selected="@(u.Role==UserRole.Admin)" value="Admin">Админ</option></select></form></div></div>}</div></div><div class="panel" style="margin-top:24px"><h2>Инвентарные номера</h2><div class="table-wrap"><table><thead><tr><th>Номер</th><th>Оборудование</th><th>Состояние</th></tr></thead><tbody>@foreach(var u in (List<string?[]>)ViewBag.Units){<tr><td>@u[0]</td><td>@u[1]</td><td>@(u[2] switch { "available"=>"Исправно", "repair"=>"Ремонт", _=>"Списано" })</td></tr>}</tbody></table></div><details><summary>История изменений склада</summary><table><thead><tr><th>Номер</th><th>Было</th><th>Стало</th><th>Дата UTC</th></tr></thead><tbody>@foreach(var h in (List<string?[]>)ViewBag.UnitHistory){<tr><td>@h[0]</td><td>@h[1]</td><td>@h[2]</td><td>@h[3]</td></tr>}</tbody></table></details></div></section>
+@{
+    ViewData["Title"]="Администрирование";
+    var cats=(List<Category>)ViewBag.Categories;
+    var users=(List<User>)ViewBag.Users;
+}
+<section class="wrap page">
+    <div class="page-title">
+        <div>
+            <div class="eyebrow muted">
+                АДМИНИСТРИРОВАНИЕ
+            </div>
+            <h1>
+                Каталог и склад
+                <span>
+                    .
+                </span>
+            </h1>
+            <p>
+                Тарифы, доступность, категории и роли.
+            </p>
+        </div>
+        <a class="btn dark" href="/Stats">
+            Статистика ↗
+        </a>
+    </div>
+    <div class="panel">
+        <h2>
+            Добавить оборудование
+        </h2>
+        <form method="post" action="/Admin/Save">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="0"/>
+            <div class="two">
+                <label>
+                    Название
+                    <input name="name" required/>
+                </label>
+                <label>
+                    Описание
+                    <input name="description"/>
+                </label>
+                <label>
+                    Категория
+                    <select name="categoryId">
+                        @foreach(var c in cats)
+                        {
+                            <option value="@c.Id">
+                                @c.Name
+                            </option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    Цена за сутки
+                    <input type="number" name="pricePerDay" min="1" required/>
+                </label>
+                <label>
+                    Количество
+                    <input type="number" name="totalUnits" min="1" value="1"/>
+                </label>
+                <label>
+                    Адрес изображения
+                    <input name="imageUrl"/>
+                </label>
+            </div>
+            <button class="small-btn">
+                Добавить
+            </button>
+        </form>
+    </div>
+    <h2>
+        Оборудование и склад
+    </h2>
+    <div class="admin-grid">
+        @foreach(var i in Model)
+        {
+            <div class="panel">
+                <div class="table-item">
+                    <img src="@i.ImageUrl" alt=""/>
+                    <h2>
+                        @i.Name
+                    </h2>
+                </div>
+                <p>
+                    Всего: @i.TotalUnits · В ремонте: @i.RepairUnits · Списано: @i.WrittenOffUnits · Исправно: @(i.TotalUnits-i.RepairUnits-i.WrittenOffUnits)
+                </p>
+                <details>
+                    <summary>
+                        Изменить товар и тариф
+                    </summary>
+                    <form method="post" action="/Admin/Save">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@i.Id"/>
+                        <input type="hidden" name="totalUnits" value="@i.TotalUnits"/>
+                        <input type="hidden" name="state" value="@i.State"/>
+                        <label>
+                            Название
+                            <input name="name" value="@i.Name" required/>
+                        </label>
+                        <label>
+                            Описание
+                            <input name="description" value="@i.Description"/>
+                        </label>
+                        <label>
+                            Категория
+                            <select name="categoryId">
+                                @foreach(var c in cats)
+                                {
+                                    <option value="@c.Id" selected="@(c.Id==i.CategoryId)">
+                                        @c.Name
+                                    </option>
+                                }
+                            </select>
+                        </label>
+                        <label>
+                            Цена за сутки
+                            <input type="number" min="1" name="pricePerDay" value="@i.PricePerDay.ToString("0")" required/>
+                        </label>
+                        <label>
+                            Фото
+                            <input name="imageUrl" value="@i.ImageUrl"/>
+                        </label>
+                        <button class="small-btn">
+                            Сохранить
+                        </button>
+                    </form>
+                </details>
+                <details>
+                    <summary>
+                        Изменить склад
+                    </summary>
+                    <form method="post" action="/Admin/Inventory">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@i.Id"/>
+                        <label>
+                            Всего единиц
+                            <input type="number" min="0" name="totalUnits" value="@i.TotalUnits" required/>
+                        </label>
+                        <label>
+                            В ремонте
+                            <input type="number" min="0" name="repairUnits" value="@i.RepairUnits" required/>
+                        </label>
+                        <label>
+                            Списано
+                            <input type="number" min="0" name="writtenOffUnits" value="@i.WrittenOffUnits" required/>
+                        </label>
+                        <button class="small-btn">
+                            Сохранить склад
+                        </button>
+                    </form>
+                </details>
+            </div>
+        }
+    </div>
+    <div class="admin-grid" style="margin-top:24px">
+        <div class="panel">
+            <h2>
+                Категории
+            </h2>
+            @foreach(var c in cats)
+            {
+                <form method="post" action="/Admin/Category">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@c.Id"/>
+                    <input name="name" value="@c.Name" required/>
+                    <button class="small-btn">
+                        Сохранить
+                    </button>
+                </form>
+            }
+            <form method="post" action="/Admin/Category">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="0"/>
+                <input name="name" placeholder="Новая категория" required/>
+                <button class="small-btn">
+                    Добавить
+                </button>
+            </form>
+        </div>
+        <div class="panel">
+            <h2>
+                Пользователи и сотрудники
+            </h2>
+            @foreach(var u in users)
+            {
+                <div class="admin-list users">
+                    <div>
+                        <span class="user-avatar">
+                            @u.Name.Substring(0,1)
+                        </span>
+                        <span>
+                            <b>
+                                @u.Name
+                            </b>
+                            <small>
+                                @u.Email
+                            </small>
+                        </span>
+                        <form method="post" action="/Admin/Role">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@u.Id"/>
+                            <select name="role" onchange="this.form.submit()">
+                                <option selected="@(u.Role==UserRole.Client)" value="Client">
+                                    Клиент
+                                </option>
+                                <option selected="@(u.Role==UserRole.Manager)" value="Manager">
+                                    Менеджер
+                                </option>
+                                <option selected="@(u.Role==UserRole.Admin)" value="Admin">
+                                    Админ
+                                </option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="panel" style="margin-top:24px">
+        <h2>
+            Инвентарные номера
+        </h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>
+                            Номер
+                        </th>
+                        <th>
+                            Оборудование
+                        </th>
+                        <th>
+                            Состояние
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var u in (List<string?[]>)ViewBag.Units)
+                    {
+                        <tr>
+                            <td>
+                                @u[0]
+                            </td>
+                            <td>
+                                @u[1]
+                            </td>
+                            <td>
+                                @(u[2] switch
+                                {
+                                    "available"=>"Исправно", "repair"=>"Ремонт", _=>"Списано"
+                                }
+                                )
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <details>
+            <summary>
+                История изменений склада
+            </summary>
+            <table>
+                <thead>
+                    <tr>
+                        <th>
+                            Номер
+                        </th>
+                        <th>
+                            Было
+                        </th>
+                        <th>
+                            Стало
+                        </th>
+                        <th>
+                            Дата UTC
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var h in (List<string?[]>)ViewBag.UnitHistory)
+                    {
+                        <tr>
+                            <td>
+                                @h[0]
+                            </td>
+                            <td>
+                                @h[1]
+                            </td>
+                            <td>
+                                @h[2]
+                            </td>
+                            <td>
+                                @h[3]
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </details>
+    </div>
+</section>
 

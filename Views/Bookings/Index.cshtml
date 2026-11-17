@@ -1,7 +1,114 @@
 @model List<Booking>
-@{ ViewData["Title"]="Мои аренды"; var items=(List<Equipment>)ViewBag.Items; }
-<section class="wrap page"><div class="page-title"><div><div class="eyebrow muted">ЛИЧНЫЙ КАБИНЕТ / 01</div><h1>Мои аренды<span>.</span></h1><p>История заказов и текущие бронирования.</p></div><a class="btn dark" href="/#catalog">Найти оборудование <span>↗</span></a></div><div class="table-wrap"><table><thead><tr><th>Оборудование</th><th>Даты</th><th>Статус</th><th>Стоимость</th><th></th></tr></thead><tbody>@foreach(var b in Model){var item=items.FirstOrDefault(i=>i.Id==b.EquipmentId);<tr><td><div class="table-item"><img src="@item?.ImageUrl"/><b>@item?.Name</b></div></td><td>@b.StartDate.ToString("dd.MM.yyyy") — @b.EndDate.ToString("dd.MM.yyyy")</td><td><span class="status @b.Status.ToString().ToLowerInvariant()">@(b.Status switch { BookingStatus.Booked=>"Ожидает подтверждения", BookingStatus.Confirmed=>"Подтверждено", BookingStatus.Issued=>b.EndDate.Date<DateTime.Today?"Просрочено":"Выдано", BookingStatus.Returned=>"Возвращено", BookingStatus.Overdue=>"Просрочено", _=>"Отменено" })</span></td><td><b>@b.TotalPrice.ToString("N0") ₽</b>@if(b.Fine>0){<small class="fine">Штраф @b.Fine.ToString("N0") ₽</small>}</td><td>@if(b.Status is BookingStatus.Booked or BookingStatus.Confirmed){<form method="post" action="/Bookings/Cancel">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.Id"/><button class="icon-btn" title="Отменить">×</button></form>}</td></tr>}</tbody></table>@if(!Model.Any()){<div class="empty">У вас пока нет аренд. <a href="/#catalog">Перейти в каталог →</a></div>}</div></section>
-
-
-
+@{
+    ViewData["Title"]="Мои аренды";
+    var items=(List<Equipment>)ViewBag.Items;
+}
+<section class="wrap page">
+    <div class="page-title">
+        <div>
+            <div class="eyebrow muted">
+                ЛИЧНЫЙ КАБИНЕТ / 01
+            </div>
+            <h1>
+                Мои аренды
+                <span>
+                    .
+                </span>
+            </h1>
+            <p>
+                История заказов и текущие бронирования.
+            </p>
+        </div>
+        <a class="btn dark" href="/#catalog">
+            Найти оборудование
+            <span>
+                ↗
+            </span>
+        </a>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        Оборудование
+                    </th>
+                    <th>
+                        Даты
+                    </th>
+                    <th>
+                        Статус
+                    </th>
+                    <th>
+                        Стоимость
+                    </th>
+                    <th>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(var b in Model)
+                {
+                    var item=items.FirstOrDefault(i=>i.Id==b.EquipmentId);
+                    <tr>
+                        <td>
+                            <div class="table-item">
+                                <img src="@item?.ImageUrl"/>
+                                <b>
+                                    @item?.Name
+                                </b>
+                            </div>
+                        </td>
+                        <td>
+                            @b.StartDate.ToString("dd.MM.yyyy") — @b.EndDate.ToString("dd.MM.yyyy")
+                        </td>
+                        <td>
+                            <span class="status @b.Status.ToString().ToLowerInvariant()">
+                                @(b.Status switch
+                                {
+                                    BookingStatus.Booked=>"Ожидает подтверждения", BookingStatus.Confirmed=>"Подтверждено", BookingStatus.Issued=>b.EndDate.Date
+                                    <DateTime.Today?"Просрочено":"Выдано", BookingStatus.Returned=>
+                                        "Возвращено", BookingStatus.Overdue=>"Просрочено", _=>"Отменено"
+                                    }
+                                    )
+                                </span>
+                            </td>
+                            <td>
+                                <b>
+                                    @b.TotalPrice.ToString("N0") ₽
+                                </b>
+                                @if(b.Fine>0)
+                                {
+                                    <small class="fine">
+                                        Штраф @b.Fine.ToString("N0") ₽
+                                    </small>
+                                }
+                            </td>
+                            <td>
+                                @if(b.Status is BookingStatus.Booked or BookingStatus.Confirmed)
+                                {
+                                    <form method="post" action="/Bookings/Cancel">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@b.Id"/>
+                                        <button class="icon-btn" title="Отменить">
+                                            ×
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if(!Model.Any())
+            {
+                <div class="empty">
+                    У вас пока нет аренд.
+                    <a href="/#catalog">
+                        Перейти в каталог →
+                    </a>
+                </div>
+            }
+        </div>
+    </section>
 

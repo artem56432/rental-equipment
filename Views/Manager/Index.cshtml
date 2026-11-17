@@ -1,7 +1,160 @@
 @model List<Booking>
-@{ ViewData["Title"]="Рабочее место менеджера"; var users=(List<User>)ViewBag.Users; var items=(List<Equipment>)ViewBag.Items; var store=(StoreService)ViewBag.Store; }
-<section class="wrap page"><div class="page-title"><div><div class="eyebrow muted">ОПЕРАЦИОННЫЙ ЦЕНТР / 01</div><h1>Бронирования<span>.</span></h1><p>Подтверждение, выдача и возврат оборудования.</p></div><div class="metric"><b>@Model.Count</b><span>всего заказов</span></div></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Клиент</th><th>Оборудование</th><th>Период</th><th>Статус</th><th>Действие</th></tr></thead><tbody>@foreach(var b in Model){var item=items.First(i=>i.Id==b.EquipmentId);var u=users.First(x=>x.Id==b.UserId);<tr><td class="muted">#@b.Id.ToString("000")</td><td><b>@u.Name</b><small>@u.Email</small></td><td><div class="table-item"><img src="@item.ImageUrl"/><b>@item.Name</b></div></td><td>@if(store.UnitNumber(b.Id)!=null){<small>№ @store.UnitNumber(b.Id)</small>}@b.StartDate.ToString("dd.MM") — @b.EndDate.ToString("dd.MM.yyyy")</td><td><span class="status @b.Status.ToString().ToLowerInvariant()">@(b.Status switch { BookingStatus.Booked=>"Новое", BookingStatus.Confirmed=>"Подтверждено", BookingStatus.Overdue=>"Просрочено", BookingStatus.Issued=>"Выдано", BookingStatus.Returned=>"Возвращено", _=>"Отменено" })</span></td><td>@if(b.Status==BookingStatus.Booked){<form method="post" action="/Manager/Update">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.Id"/><input type="hidden" name="action" value="confirm"/><button class="small-btn">Подтвердить</button></form>}else if(b.Status==BookingStatus.Confirmed){<form method="post" action="/Manager/Update">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.Id"/><input type="hidden" name="action" value="issue"/><select name="unitId" required><option value="">Выберите номер</option>@foreach(var unit in store.AvailableUnits(b.EquipmentId)){<option value="@unit[0]">@unit[1]</option>}</select><button class="small-btn">Оформить выдачу</button></form>}else if(b.Status is BookingStatus.Issued or BookingStatus.Overdue){<form method="post" action="/Manager/Update" class="return-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.Id"/><input type="hidden" name="action" value="return"/><input name="condition" placeholder="Состояние"/><input name="damageFine" type="number" placeholder="Штраф ₽" min="0"/><button class="small-btn">Принять</button></form>}else{<span class="muted">—</span>}</td></tr>}</tbody></table></div></section>
-
-
-
+@{
+    ViewData["Title"]="Рабочее место менеджера";
+    var users=(List<User>)ViewBag.Users;
+    var items=(List<Equipment>)ViewBag.Items;
+    var store=(StoreService)ViewBag.Store;
+}
+<section class="wrap page">
+    <div class="page-title">
+        <div>
+            <div class="eyebrow muted">
+                ОПЕРАЦИОННЫЙ ЦЕНТР / 01
+            </div>
+            <h1>
+                Бронирования
+                <span>
+                    .
+                </span>
+            </h1>
+            <p>
+                Подтверждение, выдача и возврат оборудования.
+            </p>
+        </div>
+        <div class="metric">
+            <b>
+                @Model.Count
+            </b>
+            <span>
+                всего заказов
+            </span>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        #
+                    </th>
+                    <th>
+                        Клиент
+                    </th>
+                    <th>
+                        Оборудование
+                    </th>
+                    <th>
+                        Период
+                    </th>
+                    <th>
+                        Статус
+                    </th>
+                    <th>
+                        Действие
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(var b in Model)
+                {
+                    var item=items.First(i=>i.Id==b.EquipmentId);
+                    var u=users.First(x=>x.Id==b.UserId);
+                    <tr>
+                        <td class="muted">
+                            #@b.Id.ToString("000")
+                        </td>
+                        <td>
+                            <b>
+                                @u.Name
+                            </b>
+                            <small>
+                                @u.Email
+                            </small>
+                        </td>
+                        <td>
+                            <div class="table-item">
+                                <img src="@item.ImageUrl"/>
+                                <b>
+                                    @item.Name
+                                </b>
+                            </div>
+                        </td>
+                        <td>
+                            @if(store.UnitNumber(b.Id)!=null)
+                            {
+                                <small>
+                                    № @store.UnitNumber(b.Id)
+                                </small>
+                            }
+                            @b.StartDate.ToString("dd.MM") — @b.EndDate.ToString("dd.MM.yyyy")
+                        </td>
+                        <td>
+                            <span class="status @b.Status.ToString().ToLowerInvariant()">
+                                @(b.Status switch
+                                {
+                                    BookingStatus.Booked=>"Новое", BookingStatus.Confirmed=>"Подтверждено", BookingStatus.Overdue=>"Просрочено", BookingStatus.Issued=>"Выдано", BookingStatus.Returned=>"Возвращено", _=>"Отменено"
+                                }
+                                )
+                            </span>
+                        </td>
+                        <td>
+                            @if(b.Status==BookingStatus.Booked)
+                            {
+                                <form method="post" action="/Manager/Update">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@b.Id"/>
+                                    <input type="hidden" name="action" value="confirm"/>
+                                    <button class="small-btn">
+                                        Подтвердить
+                                    </button>
+                                </form>
+                            }
+                            else if(b.Status==BookingStatus.Confirmed)
+                            {
+                                <form method="post" action="/Manager/Update">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@b.Id"/>
+                                    <input type="hidden" name="action" value="issue"/>
+                                    <select name="unitId" required>
+                                        <option value="">
+                                            Выберите номер
+                                        </option>
+                                        @foreach(var unit in store.AvailableUnits(b.EquipmentId))
+                                        {
+                                            <option value="@unit[0]">
+                                                @unit[1]
+                                            </option>
+                                        }
+                                    </select>
+                                    <button class="small-btn">
+                                        Оформить выдачу
+                                    </button>
+                                </form>
+                            }
+                            else if(b.Status is BookingStatus.Issued or BookingStatus.Overdue)
+                            {
+                                <form method="post" action="/Manager/Update" class="return-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@b.Id"/>
+                                    <input type="hidden" name="action" value="return"/>
+                                    <input name="condition" placeholder="Состояние"/>
+                                    <input name="damageFine" type="number" placeholder="Штраф ₽" min="0"/>
+                                    <button class="small-btn">
+                                        Принять
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="muted">
+                                    —
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
 
