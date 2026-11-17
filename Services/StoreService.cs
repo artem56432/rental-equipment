@@ -5,11 +5,13 @@ namespace EquipmentRental.Services;
 public class StoreService
 {
     private readonly string _file; private readonly SqliteStore _db; private readonly object _lock = new(); private AppData _data;
-    public StoreService(IWebHostEnvironment env) { _file = Path.Combine(env.ContentRootPath, "App_Data", "store.json"); Directory.CreateDirectory(Path.GetDirectoryName(_file)!); _db = new SqliteStore(Path.Combine(env.ContentRootPath, "App_Data", "renta.db")); _data = Load() ?? Seed(); foreach(var b in _data.Bookings) if(b.DailyRate<=0) b.DailyRate=_data.Equipment.FirstOrDefault(x=>x.Id==b.EquipmentId)?.PricePerDay ?? 0; Save(); }
+    public StoreService(IWebHostEnvironment env) { _file = Path.Combine(env.ContentRootPath, "App_Data", "store.json"); Directory.CreateDirectory(Path.GetDirectoryName(_file)!); _db = new SqliteStore(Path.Combine(env.ContentRootPath, "App_Data", "renta.db")); _db.InitializeSchema(); _data = Load() ?? Seed(); foreach(var b in _data.Bookings) if(b.DailyRate<=0) b.DailyRate=_data.Equipment.FirstOrDefault(x=>x.Id==b.EquipmentId)?.PricePerDay ?? 0; Save(); }
     public AppData Data { get { lock (_lock) return _data; } }
-    private AppData? Load() { try { var json=_db.Read(); if(json!=null) return JsonSerializer.Deserialize<AppData>(json) ?? throw new InvalidDataException("SQLite contains invalid data"); if (!File.Exists(_file)) return null; return JsonSerializer.Deserialize<AppData>(File.ReadAllText(_file)); } catch (Exception ex) { throw new InvalidDataException("Не удалось прочитать данные. Исходный файл сохранён.", ex); } }
-    private void Save() { lock (_lock) _db.Write(JsonSerializer.Serialize(_data)); }
+    private AppData? Load() { try { var normalized=_db.ReadNormalized(); if(normalized!=null) return normalized; var json=_db.Read(); if(json!=null) return JsonSerializer.Deserialize<AppData>(json) ?? throw new InvalidDataException("SQLite contains invalid data"); if (!File.Exists(_file)) return null; return JsonSerializer.Deserialize<AppData>(File.ReadAllText(_file)); } catch (Exception ex) { throw new InvalidDataException("Не удалось прочитать данные. Исходный файл сохранён.", ex); } }
+    private void Save() { lock (_lock) _db.WriteNormalized(_data); }
     public void Persist() => Save();
+    public List<string?[]> InventoryRows() => _db.InventoryRows();
+    public List<string?[]> InventoryHistory() => _db.InventoryHistory();
     public bool IsAvailable(int equipmentId, DateTime start, DateTime end, int? ignoreBooking = null) {
         var item = _data.Equipment.First(e => e.Id == equipmentId);
         int capacity = item.TotalUnits - item.RepairUnits - item.WrittenOffUnits;
@@ -39,6 +41,8 @@ public class StoreService
       Bookings = [new Booking { Id=1, EquipmentId=1, UserId=1, StartDate=DateTime.Today.AddDays(-2), EndDate=DateTime.Today.AddDays(2), TotalPrice=7500, Status=BookingStatus.Issued }, new Booking { Id=2, EquipmentId=2, UserId=1, StartDate=DateTime.Today.AddDays(12), EndDate=DateTime.Today.AddDays(14), TotalPrice=3600, Status=BookingStatus.Booked }]
     };
 }
+
+
 
 
 
