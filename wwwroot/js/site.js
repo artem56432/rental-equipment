@@ -1,0 +1,1 @@
+document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('input[type=date]').forEach(i=>i.addEventListener('change',()=>{const s=document.querySelector('input[name=startDate]'),e=document.querySelector('input[name=endDate]');if(s&&e&&s.value)e.min=s.value;}));});

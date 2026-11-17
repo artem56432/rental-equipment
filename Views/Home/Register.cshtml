@@ -1,0 +1,4 @@
+@{ ViewData["Title"]="Регистрация"; }
+<section class="auth-page"><div class="auth-card"><a class="logo" href="/">renta<span>.</span></a><h1>Создайте аккаунт<span>.</span></h1><p>Это займёт меньше минуты.</p><form method="post">@Html.AntiForgeryToken()<div asp-validation-summary="All" class="errors"></div><label>Ваше имя<input name="name" placeholder="Анна Петрова" required/></label><label>Электронная почта<input type="email" name="email" placeholder="you@example.com" required/></label><label>Пароль<input type="password" name="password" placeholder="Минимум 8 символов" minlength="8" required/></label><button class="btn dark full">Зарегистрироваться <span>↗</span></button></form><p class="auth-switch">Уже есть аккаунт? <a href="/Home/Login">Войти</a></p></div></section>
+
+
