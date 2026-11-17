@@ -10,7 +10,19 @@ public class StoreService
     private AppData? Load() { try { var json=_db.Read(); if(json!=null) return JsonSerializer.Deserialize<AppData>(json) ?? throw new InvalidDataException("SQLite contains invalid data"); if (!File.Exists(_file)) return null; return JsonSerializer.Deserialize<AppData>(File.ReadAllText(_file)); } catch (Exception ex) { throw new InvalidDataException("Не удалось прочитать данные. Исходный файл сохранён.", ex); } }
     private void Save() { lock (_lock) _db.Write(JsonSerializer.Serialize(_data)); }
     public void Persist() => Save();
-    public bool IsAvailable(int equipmentId, DateTime start, DateTime end, int? ignoreBooking = null) { var item=_data.Equipment.First(e=>e.Id==equipmentId); int capacity=item.TotalUnits-item.RepairUnits-item.WrittenOffUnits; if(capacity<=0) return false; var active=_data.Bookings.Where(b=>b.EquipmentId==equipmentId && b.Id!=ignoreBooking && b.Status is BookingStatus.Booked or BookingStatus.Confirmed or BookingStatus.Issued or BookingStatus.Overdue && start.Date<=b.EndDate.Date && end.Date>=b.StartDate.Date).ToList(); for(var day=start.Date;day<=end.Date;day=day.AddDays(1)) if(active.Count(b=>b.StartDate.Date<=day && (b.Status is BookingStatus.Issued or BookingStatus.Overdue && b.EndDate.Date<DateTime.Today ? DateTime.Today : b.EndDate.Date)>=day)>=capacity) return false; return true; }
+    public bool IsAvailable(int equipmentId, DateTime start, DateTime end, int? ignoreBooking = null) {
+        var item = _data.Equipment.First(e => e.Id == equipmentId);
+        int capacity = item.TotalUnits - item.RepairUnits - item.WrittenOffUnits;
+        if (capacity <= 0 || end.Date < start.Date || (end.Date-start.Date).TotalDays > 365) return false;
+        var active = _data.Bookings.Where(b => b.EquipmentId == equipmentId && b.Id != ignoreBooking &&
+            (b.Status is BookingStatus.Booked or BookingStatus.Confirmed or BookingStatus.Issued or BookingStatus.Overdue)).ToList();
+        foreach (var day in Enumerable.Range(0, (end.Date-start.Date).Days+1).Select(n => start.Date.AddDays(n))) {
+            int occupied = active.Count(b => b.StartDate.Date <= day &&
+                ((b.Status is BookingStatus.Issued or BookingStatus.Overdue) && b.EndDate.Date < DateTime.Today ? DateTime.Today : b.EndDate.Date) >= day);
+            if (occupied >= capacity) return false;
+        }
+        return true;
+    }
     public decimal Price(int equipmentId, DateTime start, DateTime end) { var item = _data.Equipment.First(e => e.Id == equipmentId); var days = Math.Max(1, (end.Date - start.Date).Days + 1); return days * item.PricePerDay; }
     public int NextId<T>(IEnumerable<T> list) => list.Cast<object>().Count() == 0 ? 1 : list.Cast<dynamic>().Max(x => (int)x.Id) + 1;
     private static AppData Seed() => new() {
@@ -27,6 +39,7 @@ public class StoreService
       Bookings = [new Booking { Id=1, EquipmentId=1, UserId=1, StartDate=DateTime.Today.AddDays(-2), EndDate=DateTime.Today.AddDays(2), TotalPrice=7500, Status=BookingStatus.Issued }, new Booking { Id=2, EquipmentId=2, UserId=1, StartDate=DateTime.Today.AddDays(12), EndDate=DateTime.Today.AddDays(14), TotalPrice=3600, Status=BookingStatus.Booked }]
     };
 }
+
 
 
 
