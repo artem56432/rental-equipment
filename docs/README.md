@@ -5,7 +5,7 @@
 Требования: Windows 10/11, .NET 9 SDK. Откройте PowerShell и выполните:
 
 ```powershell
-cd -LiteralPath "C:\Users\Пользователь\Documents\Codex\2026-11-17\1-figma-er-ui-ux-2\outputs\EquipmentRental"
+cd -LiteralPath "путь\к\EquipmentRental"
 dotnet run
 ```
 
